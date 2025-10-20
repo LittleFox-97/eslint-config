@@ -4,36 +4,8 @@ import type { Awaitable, ConfigNames, OptionsConfig, TypedFlatConfigItem } from 
 
 import { FlatConfigComposer } from 'eslint-flat-config-utils'
 import { isPackageExists } from 'local-pkg'
-import {
-  astro,
-  command,
-  comments,
-  disables,
-  ignores,
-  imports,
-  javascript,
-  jsdoc,
-  jsonc,
-  jsx,
-  markdown,
-  nextjs,
-  node,
-  perfectionist,
-  pnpm,
-  react,
-  solid,
-  sortPackageJson,
-  sortTsconfig,
-  stylistic,
-  svelte,
-  test,
-  toml,
-  typescript,
-  unicorn,
-  unocss,
-  vue,
-  yaml,
-} from './configs'
+import { hasPnpmCatalogs } from './cli/stages/get-version'
+import { astro, command, comments, disables, ignores, imports, javascript, jsdoc, jsonc, jsx, markdown, nextjs, node, perfectionist, pnpm, react, solid, sortPackageJson, sortTsconfig, stylistic, svelte, test, toml, typescript, unicorn, unocss, vue, yaml } from './configs'
 import { formatters } from './configs/formatters'
 import { regexp } from './configs/regexp'
 import { interopDefault, isInEditorEnv } from './utils'
@@ -93,7 +65,7 @@ export function antfu(
     imports: enableImports = true,
     jsx: enableJsx = true,
     nextjs: enableNextjs = false,
-    pnpm: enableCatalogs = false, // TODO: smart detect
+    pnpm: enableCatalogs = hasPnpmCatalogs,
     react: enableReact = false,
     regexp: enableRegexp = true,
     solid: enableSolid = false,
@@ -104,7 +76,7 @@ export function antfu(
     vue: enableVue = VuePackages.some(i => isPackageExists(i)),
   } = options
 
-  let isInEditor = options.isInEditor
+  let { isInEditor } = options
   if (isInEditor == null) {
     isInEditor = isInEditorEnv()
     if (isInEditor)
@@ -124,16 +96,16 @@ export function antfu(
   const configs: Awaitable<TypedFlatConfigItem[]>[] = []
 
   if (enableGitignore) {
-    if (typeof enableGitignore !== 'boolean') {
+    if (typeof enableGitignore === 'boolean') {
       configs.push(interopDefault(import('eslint-config-flat-gitignore')).then(r => [r({
         name: 'antfu/gitignore',
-        ...enableGitignore,
+        strict: false,
       })]))
     }
     else {
       configs.push(interopDefault(import('eslint-config-flat-gitignore')).then(r => [r({
         name: 'antfu/gitignore',
-        strict: false,
+        ...enableGitignore,
       })]))
     }
   }
@@ -349,7 +321,7 @@ export function antfu(
   }
 
   if (isInEditor) {
-    composer = composer
+    return composer
       .disableRulesFix([
         'unused-imports/no-unused-imports',
         'test/no-only-tests',
